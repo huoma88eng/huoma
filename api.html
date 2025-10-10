@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内容预览</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        neutral: '#64748B',
+                        dark: '#1E293B',
+                        light: '#F8FAFC',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        vip: '#FBBF24',
+                        wechat: {
+                            bg: '#F5F5F5',
+                            text: '#3E3E3E',
+                            title: '#2C2C2C',
+                            gray: '#8C8C8C',
+                            lightgray: '#F2F2F2'
+                        }
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                        wechat: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif']
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .btn-hover {
+                @apply hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200;
+            }
+            .image-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 300px;
+            }
+            .image-preview {
+                max-width: 100%;
+                max-height: 70vh;
+                object-fit: contain;
+                transition: transform 0.3s ease;
+            }
+            .image-preview:hover {
+                transform: scale(1.02);
+            }
+            .wechat-article p {
+                @apply my-4 leading-relaxed;
+            }
+            .wechat-article img {
+                @apply max-w-full h-auto my-6 mx-auto block;
+            }
+            .wechat-article h1, 
+            .wechat-article h2, 
+            .wechat-article h3 {
+                @apply font-bold mt-8 mb-4 text-wechat-title;
+            }
+            .wechat-article h1 {
+                @apply text-2xl;
+            }
+            .wechat-article h2 {
+                @apply text-xl;
+            }
+            .wechat-article h3 {
+                @apply text-lg;
+            }
+            .wechat-article a {
+                @apply text-primary underline;
+            }
+            .wechat-article blockquote {
+                @apply border-l-4 border-gray-300 pl-4 italic text-wechat-gray my-6;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-light to-blue-50 min-h-screen font-inter flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 md:p-8 mx-auto">
+        <!-- 加载状态 -->
+        <div id="loadingState" class="text-center py-12">
+            <div class="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-neutral">正在获取内容...</p>
+        </div>
+        
+        <!-- 错误状态 -->
+        <div id="errorState" class="hidden text-center py-12">
+            <div class="w-16 h-16 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa fa-exclamation-triangle text-danger text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-dark mb-2">出错了</h3>
+            <p id="errorMessage" class="text-neutral mb-6">找不到对应的内容</p>
+            <a href="index.html" class="inline-block bg-primary text-white py-2 px-6 rounded-lg btn-hover">返回首页</a>
+        </div>
+        
+        <!-- URL跳转确认状态 -->
+        <div id="redirectState" class="hidden">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-external-link text-primary text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-dark">跳转提示</h2>
+                <p class="text-neutral mt-2">您即将访问下面的网站，请注意保护好个人信息</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-xl p-5 mb-8">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <i class="fa fa-link text-primary text-lg"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-neutral mb-1">目标网站</h3>
+                        <div id="targetUrlDisplay" class="text-sm text-primary break-all max-w-xs">
+                            <!-- 目标URL将在这里显示 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-8 text-center">
+                <p class="text-neutral">点击下方按钮确认您的访问意图</p>
+            </div>
+            
+            <div class="flex flex-col space-y-3">
+                <button id="continueBtn" class="bg-primary text-white py-3.5 px-6 rounded-xl font-medium btn-hover flex items-center justify-center mx-auto w-full md:w-2/3">
+                    <i class="fa fa-arrow-right mr-2"></i> 继续访问
+                </button>
+            </div>
+        </div>
+        
+        <!-- 图片活码展示状态 -->
+        <div id="imageState" class="hidden">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-image text-secondary text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-dark" id="imageTitle">图片预览</h2>
+                <p class="text-neutral mt-2">下方是图片内容，长按可保存</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-xl p-5 mb-8 image-container">
+                <img id="imagePreview" src="" alt="图片预览" class="image-preview rounded-lg shadow-sm">
+                <!-- 图片加载失败的备用内容 -->
+                <div id="imageError" class="hidden text-neutral">
+                    <i class="fa fa-picture-o text-4xl mb-2 block"></i>
+                    <p>图片加载失败</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-col space-y-3">
+                <button id="downloadImageBtn" class="bg-secondary text-white py-3.5 px-6 rounded-xl font-medium btn-hover flex items-center justify-center mx-auto w-full md:w-2/3">
+                    <i class="fa fa-download mr-2"></i> 保存图片
+                </button>
+            </div>
+        </div>
+        
+        <!-- 图文活码展示状态 (微信公众号风格) -->
+        <div id="graphicTextState" class="hidden font-wechat bg-wechat-bg rounded-xl overflow-hidden">
+            <!-- 公众号文章头部 -->
+            <div class="p-6 bg-white">
+                <h1 id="graphicTitle" class="text-2xl md:text-3xl font-bold text-wechat-title leading-tight mb-4"></h1>
+                
+                <div class="flex items-center text-wechat-gray text-sm mb-6">
+                    <span id="graphicAuthor" class="mr-4">未知作者</span>
+                    <span><i class="fa fa-eye mr-1"></i> <span id="graphicViews">--</span>次浏览</span>
+                </div>
+                
+                <!-- 文章封面图 -->
+                <div id="graphicCoverContainer" class="mb-6 rounded-lg overflow-hidden">
+                    <img id="graphicCover" src="" alt="文章封面" class="w-full h-auto">
+                </div>
+            </div>
+            
+            <!-- 文章内容区域 -->
+            <div id="graphicContent" class="wechat-article p-6 bg-white min-h-[300px] text-wechat-text text-base">
+                <!-- 图文内容将在这里显示 -->
+            </div>
+            
+            <!-- 文章底部 -->
+            <div class="p-6 bg-white border-t border-wechat-lightgray mt-4">
+                <div id="graphicUrlContainer" class="mt-6 p-4 bg-wechat-lightgray rounded-lg hidden">
+                    <p class="text-wechat-gray text-sm mb-2">相关链接：</p>
+                    <a id="graphicUrl" href="#" target="_blank" class="text-primary text-sm underline break-all">查看链接</a>
+                </div>
+                
+                <div class="mt-8 pt-6 border-t border-wechat-lightgray text-center text-wechat-gray text-sm">
+                    <p>点击右上角 <i class="fa fa-share-alt"></i> 分享到朋友圈</p>
+                </div>
+            </div>
+            
+            <!-- 底部按钮 -->
+            <div class="p-6 bg-white">
+                <button id="graphicBackBtn" class="bg-primary text-white py-3.5 px-6 rounded-xl font-medium btn-hover flex items-center justify-center mx-auto w-full md:w-2/3">
+                    <i class="fa fa-arrow-left mr-2"></i> 返回
+                </button>
+            </div>
+        </div>
+        
+        <div class="mt-8 text-center text-xs text-neutral">
+            <p>此为安全内容展示页</p>
+            <p class="mt-2">
+                <a href="https://47p.cn" target="_blank" class="text-primary hover:underline">47p.cn</a> 提供技术支持
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // 从URL获取短代码
+        function getShortCode() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('code') || '';
+        }
+        
+        // 验证URL格式并添加协议
+        function validateUrl(url) {
+            if (!url) return '';
+            // 检查是否已包含协议
+            if (!/^https?:\/\//i.test(url)) {
+                return 'http://' + url;
+            }
+            return url;
+        }
+        
+        // 修正图片URL的函数
+        function fixImageUrl(url) {
+            if (!url) return url;
+            
+            // 正确的图片域名
+            const baseDomain = 'https://47p.cn';
+            
+            // 如果是相对路径，添加完整域名
+            if (!/^https?:\/\//i.test(url)) {
+                // 确保路径以斜杠开头
+                if (!url.startsWith('/')) {
+                    url = '/' + url;
+                }
+                return baseDomain + url;
+            }
+            
+            // 将错误的域名替换为正确的域名
+            const oldDomain = 'lianwo88-eng.github.io/weixin752675';
+            if (url.includes(oldDomain)) {
+                return url.replace(oldDomain, '47p.cn');
+            }
+            
+            return url;
+        }
+        
+        // 记录访问日志
+        function logVisit(qrcodeId) {
+            const logData = {
+                qrcode_id: qrcodeId,
+                user_agent: navigator.userAgent,
+                referer: document.referrer,
+                timestamp: new Date().toISOString()
+            };
+            
+            fetch('https://47p.cn/api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'log',
+                    data: logData
+                })
+            }).catch(err => console.error('日志记录失败:', err));
+        }
+        
+        // 更新扫描统计
+        function updateScanCount(qrcodeId) {
+            fetch('https://47p.cn/api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'scan',
+                    qrcode_id: qrcodeId
+                })
+            }).catch(err => console.error('更新统计失败:', err));
+        }
+        
+        // 跳转到目标URL
+        function redirectToTarget(url) {
+            if (url) {
+                window.location.href = url;
+            }
+        }
+        
+        // 下载图片
+        function downloadImage() {
+            const img = document.getElementById('imagePreview');
+            if (!img || !img.src) return;
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.download = 'image_qrcode.png';
+            link.href = img.src;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // 加载并显示图文内容
+        function displayGraphicContent(qrcode) {
+            // 隐藏加载状态，显示图文内容区域
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('graphicTextState').classList.remove('hidden');
+            
+            // 设置标题
+            document.getElementById('graphicTitle').textContent = qrcode.title || '无标题';
+            
+            // 设置作者（使用活码名称作为作者）
+            document.getElementById('graphicAuthor').textContent = qrcode.name || '未知作者';
+            
+            // 设置浏览量
+            document.getElementById('graphicViews').textContent = qrcode.scan_count > 0 ? qrcode.scan_count : '--';
+            
+            // 处理封面图
+            const coverContainer = document.getElementById('graphicCoverContainer');
+            const coverImg = document.getElementById('graphicCover');
+            
+            // 从内容中提取第一张图片作为封面
+            if (qrcode.content && qrcode.content.includes('<img')) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = qrcode.content;
+                const firstImg = tempDiv.querySelector('img');
+                
+                if (firstImg && firstImg.src) {
+                    coverImg.src = fixImageUrl(firstImg.src);
+                    coverImg.alt = firstImg.alt || '文章封面';
+                    
+                    // 处理封面图加载失败
+                    coverImg.onerror = function() {
+                        coverContainer.classList.add('hidden');
+                    };
+                } else {
+                    coverContainer.classList.add('hidden');
+                }
+            } else {
+                coverContainer.classList.add('hidden');
+            }
+            
+            // 设置文章内容，修正图片URL
+            let content = qrcode.content || '<p>暂无内容</p>';
+            
+            // 修正内容中的所有图片URL
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            const images = tempDiv.querySelectorAll('img');
+            
+            images.forEach(img => {
+                if (img.src) {
+                    img.src = fixImageUrl(img.src);
+                    // 添加图片样式
+                    img.classList.add('rounded-lg', 'shadow-sm');
+                }
+            });
+            
+            document.getElementById('graphicContent').innerHTML = tempDiv.innerHTML;
+            
+            // 处理相关链接
+            const urlContainer = document.getElementById('graphicUrlContainer');
+            const urlLink = document.getElementById('graphicUrl');
+            
+            if (qrcode.new_url) {
+                const fixedUrl = validateUrl(qrcode.new_url);
+                urlLink.href = fixedUrl;
+                urlLink.textContent = fixedUrl;
+                urlContainer.classList.remove('hidden');
+            } else {
+                urlContainer.classList.add('hidden');
+            }
+            
+            // 绑定返回按钮事件
+            document.getElementById('graphicBackBtn').addEventListener('click', () => {
+                window.location.href = 'index.html';
+            });
+        }
+        
+        // 初始化页面
+        async function init() {
+            const shortCode = getShortCode();
+            
+            // 如果没有短代码，重定向到首页
+            if (!shortCode) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            try {
+                // 调用API获取二维码信息
+                const response = await fetch('https://47p.cn/api.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'get_qrcode',
+                        shortCode: shortCode
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('未找到对应的内容');
+                }
+                
+                const qrcode = await response.json();
+                
+                // 确保qrcode是一个对象
+                if (typeof qrcode !== 'object' || qrcode === null) {
+                    throw new Error('获取的数据格式不正确');
+                }
+                
+                // 记录访问日志和更新统计
+                if (qrcode.id) {
+                    logVisit(qrcode.id);
+                    updateScanCount(qrcode.id);
+                }
+                
+                // 根据活码类型显示不同内容
+                if (qrcode.type === 'graphic_text') {
+                    // 如果是图文类型，获取详细内容
+                    const graphicResponse = await fetch('https://47p.cn/api.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'get_graphic_text',
+                            qrcode_id: qrcode.id
+                        })
+                    });
+                    
+                    if (!graphicResponse.ok) {
+                        throw new Error('获取图文内容失败');
+                    }
+                    
+                    const graphicData = await graphicResponse.json();
+                    displayGraphicContent(graphicData);
+                    
+                } else if (qrcode.type === 'image') {
+                    // 图片活码处理
+                    if (!qrcode.image_path) {
+                        throw new Error('图片不存在或已被删除');
+                    }
+                    
+                    // 修正图片URL
+                    const fixedImageUrl = fixImageUrl(qrcode.image_path);
+                    
+                    // 显示图片预览界面
+                    document.getElementById('loadingState').classList.add('hidden');
+                    document.getElementById('imageState').classList.remove('hidden');
+                    
+                    // 获取图片元素并设置加载失败处理
+                    const imgElement = document.getElementById('imagePreview');
+                    imgElement.src = fixedImageUrl;
+                    imgElement.onerror = function() {
+                        document.getElementById('imageError').classList.remove('hidden');
+                        imgElement.classList.add('hidden');
+                    };
+                    
+                    document.getElementById('imageTitle').textContent = qrcode.name || '图片预览';
+                    
+                    // 绑定下载按钮事件
+                    document.getElementById('downloadImageBtn').addEventListener('click', downloadImage);
+                } else {
+                    // URL活码处理 - 增加多重安全检查
+                    let originalUrl = '';
+                    
+                    // 检查是否有单个URL
+                    if (typeof qrcode.original_url === 'string' && qrcode.original_url.trim() !== '') {
+                        originalUrl = qrcode.original_url.trim();
+                    } 
+                    // 检查是否有URL数组
+                    else if (Array.isArray(qrcode.original_urls) && qrcode.original_urls.length > 0) {
+                        // 确保第一个元素是字符串
+                        if (typeof qrcode.original_urls[0] === 'string' && qrcode.original_urls[0].trim() !== '') {
+                            originalUrl = qrcode.original_urls[0].trim();
+                        }
+                    }
+                    
+                    // 验证URL有效性
+                    const targetUrl = validateUrl(originalUrl);
+                    if (!targetUrl) {
+                        throw new Error('无效的目标URL');
+                    }
+                    
+                    // 显示跳转确认界面
+                    document.getElementById('loadingState').classList.add('hidden');
+                    document.getElementById('redirectState').classList.remove('hidden');
+                    document.getElementById('targetUrlDisplay').textContent = targetUrl;
+                    
+                    // 检查是否为VIP用户，如果是则直接跳转
+                    if (qrcode.isVip) {
+                        redirectToTarget(targetUrl);
+                        return;
+                    }
+                    
+                    // 绑定继续访问按钮事件
+                    document.getElementById('continueBtn').addEventListener('click', () => {
+                        redirectToTarget(targetUrl);
+                    });
+                }
+                
+            } catch (error) {
+                // 显示错误信息
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('errorState').classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = error.message;
+                console.error('获取内容失败:', error);
+            }
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
