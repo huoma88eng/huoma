@@ -211,7 +211,7 @@
         <div class="mt-8 text-center text-xs text-neutral">
             <p>此为安全内容展示页</p>
             <p class="mt-2">
-                <a href="https://47p.cn" target="_blank" class="text-primary hover:underline">47p.cn</a> 提供技术支持
+                <a href="http://120.48.80.199:83" target="_blank" class="text-primary hover:underline">47p.cn</a> 提供技术支持
             </p>
         </div>
     </div>
@@ -238,7 +238,7 @@
             if (!url) return url;
             
             // 正确的图片域名
-            const baseDomain = 'https://47p.cn';
+            const baseDomain = 'http://120.48.80.199:83';
             
             // 如果是相对路径，添加完整域名
             if (!/^https?:\/\//i.test(url)) {
@@ -250,7 +250,7 @@
             }
             
             // 将错误的域名替换为正确的域名
-            const oldDomain = 'lianwo88-eng.github.io/weixin752675';
+            const oldDomain = 'huoma88eng.github.io/huoma';
             if (url.includes(oldDomain)) {
                 return url.replace(oldDomain, '47p.cn');
             }
@@ -267,7 +267,7 @@
                 timestamp: new Date().toISOString()
             };
             
-            fetch('https://47p.cn/api.php', {
+            fetch('http://120.48.80.199:83/api.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -281,7 +281,7 @@
         
         // 更新扫描统计
         function updateScanCount(qrcodeId) {
-            fetch('https://47p.cn/api.php', {
+            fetch('http://120.48.80.199:83/api.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -403,7 +403,7 @@
             
             try {
                 // 调用API获取二维码信息
-                const response = await fetch('https://47p.cn/api.php', {
+                const response = await fetch('http://120.48.80.199:83/api.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -434,7 +434,7 @@
                 // 根据活码类型显示不同内容
                 if (qrcode.type === 'graphic_text') {
                     // 如果是图文类型，获取详细内容
-                    const graphicResponse = await fetch('https://47p.cn/api.php', {
+                    const graphicResponse = await fetch('http://120.48.80.199:83/api.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
