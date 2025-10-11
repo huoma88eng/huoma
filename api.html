@@ -7,7 +7,7 @@
     <meta http-equiv="Expires" content="0">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>内容预览</title>
+    <title></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
@@ -226,54 +226,6 @@
                     logVisit(qrcode.id);
                     updateScanCount(qrcode.id);
                 }
-                
-                // 根据活码类型显示不同内容
-                if (qrcode.type === 'graphic_text') {
-                    // 如果是图文类型，获取详细内容
-                    const graphicResponse = await fetch('https://huoma.tappcn.xyz/api.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            action: 'get_graphic_text',
-                            qrcode_id: qrcode.id
-                        })
-                    });
-                    
-                    if (!graphicResponse.ok) {
-                        throw new Error('获取图文内容失败');
-                    }
-                    
-                    const graphicData = await graphicResponse.json();
-                    displayGraphicContent(graphicData);
-                    
-                } else if (qrcode.type === 'image') {
-                    // 图片活码处理
-                    if (!qrcode.image_path) {
-                        throw new Error('图片不存在或已被删除');
-                    }
-                    
-                    // 修正图片URL
-                    const fixedImageUrl = fixImageUrl(qrcode.image_path);
-                    
-                    // 显示图片预览界面
-                    document.getElementById('loadingState').classList.add('hidden');
-                    document.getElementById('imageState').classList.remove('hidden');
-                    
-                    // 获取图片元素并设置加载失败处理
-                    const imgElement = document.getElementById('imagePreview');
-                    imgElement.src = fixedImageUrl;
-                    imgElement.onerror = function() {
-                        document.getElementById('imageError').classList.remove('hidden');
-                        imgElement.classList.add('hidden');
-                    };
-                    
-                    document.getElementById('imageTitle').textContent = qrcode.name || '图片预览';
-                    
-                    // 绑定下载按钮事件
-                    document.getElementById('downloadImageBtn').addEventListener('click', downloadImage);
-                } else {
                     // URL活码处理 - 增加多重安全检查
                     let originalUrl = '';
                     
@@ -311,13 +263,13 @@
                     document.getElementById('continueBtn').addEventListener('click', () => {
                         redirectToTarget(targetUrl);
                     });
-                }
+                
                 
             } catch (error) {
                 // 显示错误信息
-                document.getElementById('loadingState').classList.add('hidden');
-                document.getElementById('errorState').classList.remove('hidden');
-                document.getElementById('errorMessage').textContent = error.message;
+                // document.getElementById('loadingState').classList.add('hidden');
+                // document.getElementById('errorState').classList.remove('hidden');
+                // document.getElementById('errorMessage').textContent = error.message;
                 console.error('获取内容失败:', error);
             }
         }
