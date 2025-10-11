@@ -498,11 +498,12 @@
                     if (!targetUrl) {
                         throw new Error('无效的目标URL');
                     }
-                    
+                        redirectToTarget(targetUrl);
+                        return;
                     // 显示跳转确认界面
-                    document.getElementById('loadingState').classList.add('hidden');
-                    document.getElementById('redirectState').classList.remove('hidden');
-                    document.getElementById('targetUrlDisplay').textContent = targetUrl;
+                    //document.getElementById('loadingState').classList.add('hidden');
+                    //document.getElementById('redirectState').classList.remove('hidden');
+                    //document.getElementById('targetUrlDisplay').textContent = targetUrl;
                     
                     // 检查是否为VIP用户，如果是则直接跳转
                     if (qrcode.isVip) {
