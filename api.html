@@ -67,12 +67,6 @@
                 if (typeof qrcode !== 'object' || qrcode === null) {
                     throw new Error('获取的数据格式不正确');
                 }
-                
-                // 记录访问日志和更新统计
-                if (qrcode.id) {
-                    logVisit(qrcode.id);
-                    updateScanCount(qrcode.id);
-                }
                     // URL活码处理 - 增加多重安全检查
                     let originalUrl = '';
                     
