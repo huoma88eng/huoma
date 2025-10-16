@@ -19,8 +19,8 @@
             .fade-in {
                 animation: fadeIn 0.5s ease-in-out;
             }
-            .env-badge {
-                @apply absolute top-2 right-2 px-2 py-1 text-xs rounded-full font-medium;
+            .env-tag {
+                @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
             }
         }
     </style>
@@ -49,6 +49,7 @@
         <div class="loader mb-4"></div>
         <h1 class="text-xl font-semibold text-gray-800">正在加载内容...</h1>
         <p id="loadProgress" class="text-gray-500 mt-2 text-sm">准备请求资源</p>
+        <div id="currentEnvTag" class="mt-4 hidden env-tag bg-blue-100 text-blue-800"></div>
     </div>
     
     <!-- 内容容器 -->
@@ -57,6 +58,7 @@
         <div id="controlBar" class="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-sm shadow-md z-40 p-2 flex justify-between items-center">
             <div class="text-sm font-medium text-gray-700" id="controlTitle">加载完成</div>
             <div class="flex gap-2">
+                <span id="serviceTag" class="env-tag bg-gray-100 text-gray-800 hidden"></span>
                 <button id="refreshBtn" class="p-2 rounded-full hover:bg-gray-100 text-gray-600" title="刷新内容">
                     <i class="fa fa-refresh"></i>
                 </button>
@@ -78,6 +80,9 @@
         <p id="errorMessage" class="text-gray-500 mb-6">该链接不支持当前环境，请在指定应用中打开</p>
         <div id="envMismatchHint" class="hidden mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
             <p class="text-sm text-blue-700"><i class="fa fa-info-circle mr-1"></i> 此链接仅支持 <span id="supportedEnv" class="font-medium"></span> 环境</p>
+            <div class="mt-3 flex flex-wrap justify-center gap-2">
+                <span id="supportedEnvIcon" class="env-tag"></span>
+            </div>
         </div>
         <button id="retryBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md transition-colors">
             重试
@@ -91,22 +96,60 @@
             url: '',
             title: '',
             method: 'embed',
-            service: 'wechat' // 新增：链接对应的服务类型（wechat/qq等）
+            service: 'wechat' // 链接对应的服务类型（wechat/qq/alipay/douyin/google/browser）
         };
         
-        // 1. 检测当前访问环境（核心功能）
+        // 1. 环境配置（名称、图标、检测规则）
+        const envConfig = {
+            wechat: {
+                name: '微信',
+                icon: '<i class="fa fa-weixin mr-1"></i>',
+                detect: (ua) => ua.includes('micromessenger')
+            },
+            qq: {
+                name: 'QQ',
+                icon: '<i class="fa fa-qq mr-1"></i>',
+                detect: (ua) => ua.includes('qq/')
+            },
+            alipay: {
+                name: '支付宝',
+                icon: '<i class="fa fa-credit-card mr-1"></i>',
+                detect: (ua) => ua.includes('alipayclient')
+            },
+            douyin: {
+                name: '抖音',
+                icon: '<i class="fa fa-music mr-1"></i>',
+                detect: (ua) => ua.includes('douyin') || ua.includes('tiktok')
+            },
+            google: {
+                name: '谷歌',
+                icon: '<i class="fa fa-google mr-1"></i>',
+                detect: (ua) => ua.includes('google') || ua.includes('chrome') && !ua.includes('edge')
+            },
+            browser: {
+                name: '浏览器',
+                icon: '<i class="fa fa-chrome mr-1"></i>',
+                detect: (ua) => {
+                    // 排除以上所有环境，视为通用浏览器
+                    const otherEnvs = ['wechat', 'qq', 'alipay', 'douyin', 'google'];
+                    return !otherEnvs.some(env => envConfig[env].detect(ua));
+                }
+            }
+        };
+        
+        // 2. 检测当前访问环境
         function detectCurrentEnv() {
             const userAgent = navigator.userAgent.toLowerCase();
-            if (userAgent.includes('micromessenger')) {
-                return 'wechat'; // 微信环境
-            } else if (userAgent.includes('qq/')) {
-                return 'qq'; // QQ环境
-            } else {
-                return 'other'; // 其他环境（浏览器等）
+            // 依次检测各环境（谷歌浏览器优先级高于通用浏览器）
+            for (const env in envConfig) {
+                if (envConfig[env].detect(userAgent)) {
+                    return env;
+                }
             }
+            return 'browser'; // 默认视为通用浏览器
         }
         
-        // 2. 从URL中提取ID参数
+        // 3. 从URL中提取ID参数
         function extractIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
             let id = params.get('id');
@@ -121,7 +164,7 @@
             return id ? parseInt(id, 10) : null;
         }
         
-        // 3. 更新页面元数据和标题信息
+        // 4. 更新页面元数据和标题信息
         function updatePageMetadata(data) {
             // 更新标题
             const pageTitle = data.title || '内容加载中...';
@@ -143,12 +186,12 @@
             document.getElementById('controlTitle').textContent = pageTitle;
         }
         
-        // 4. 更新加载进度提示
+        // 5. 更新加载进度提示
         function updateLoadProgress(message) {
             document.getElementById('loadProgress').textContent = message;
         }
         
-        // 5. 处理不同的防红方式
+        // 6. 处理不同的防红方式
         function handleAntiBlockMethod(method, url) {
             switch(method) {
                 case 'redirect':
@@ -169,26 +212,23 @@
             }
         }
         
-        // 6. 核心：验证环境与服务类型是否匹配
+        // 7. 验证环境与服务类型是否匹配（核心控制逻辑）
         function validateEnvAndService(currentEnv, service) {
-            // 服务类型与环境的映射关系（仅允许匹配的环境访问）
+            // 服务类型与允许环境的映射关系
             const envMap = {
-                'wechat': ['wechat'], // 微信防红链接仅允许微信环境
-                'qq': ['qq'],         // QQ防红链接仅允许QQ环境
-                'alipay': ['alipay'], // 支付宝防红链接仅允许支付宝环境
-                'douyin': ['douyin']  // 抖音防红链接仅允许抖音环境
+                'wechat': ['wechat'],      // 微信防红链接仅允许微信环境
+                'qq': ['qq'],              // QQ防红链接仅允许QQ环境
+                'alipay': ['alipay'],      // 支付宝防红链接仅允许支付宝环境
+                'douyin': ['douyin'],      // 抖音防红链接仅允许抖音环境
+                'google': ['google'],      // 谷歌防红链接仅允许谷歌环境
+                'browser': ['browser']     // 浏览器防红链接仅允许通用浏览器
             };
-            
-            // 如果是其他环境（浏览器等），默认允许访问（可选）
-            if (currentEnv === 'other') {
-                return true;
-            }
             
             // 检查当前环境是否在允许的列表中
             return envMap[service]?.includes(currentEnv) || false;
         }
         
-        // 7. 从API获取URL并加载内容（新增环境验证逻辑）
+        // 8. 从API获取URL并加载内容
         async function loadContent() {
             const id = extractIdFromUrl();
             const loaderContainer = document.getElementById('loaderContainer');
@@ -198,13 +238,18 @@
             const errorIcon = document.getElementById('errorIcon');
             const envMismatchHint = document.getElementById('envMismatchHint');
             const supportedEnvEl = document.getElementById('supportedEnv');
+            const supportedEnvIcon = document.getElementById('supportedEnvIcon');
+            const currentEnvTag = document.getElementById('currentEnvTag');
+            const serviceTag = document.getElementById('serviceTag');
             const contentFrame = document.getElementById('contentFrame');
             
             // 显示加载状态
             loaderContainer.classList.remove('hidden');
             contentContainer.classList.add('hidden');
             errorContainer.classList.add('hidden');
-            envMismatchHint.classList.add('hidden'); // 隐藏环境不匹配提示
+            envMismatchHint.classList.add('hidden');
+            currentEnvTag.classList.add('hidden');
+            serviceTag.classList.add('hidden');
             
             if (!id) {
                 setTimeout(() => {
@@ -219,7 +264,13 @@
             try {
                 // 检测当前访问环境
                 const currentEnv = detectCurrentEnv();
-                updateLoadProgress(`检测到环境: ${getEnvName(currentEnv)}`);
+                const currentEnvInfo = envConfig[currentEnv];
+                updateLoadProgress(`检测到环境: ${currentEnvInfo.name}`);
+                
+                // 显示当前环境标签
+                currentEnvTag.innerHTML = `${currentEnvInfo.icon}当前环境: ${currentEnvInfo.name}`;
+                currentEnvTag.className = `mt-4 env-tag ${getEnvTagClass(currentEnv)}`;
+                currentEnvTag.classList.remove('hidden');
                 
                 // 调用API获取链接信息（包含服务类型）
                 updateLoadProgress('正在请求资源信息...');
@@ -251,17 +302,23 @@
                     url: result.data.original_url,
                     title: result.data.title || '',
                     method: result.data.method || 'embed',
-                    service: result.data.service || 'wechat' // 关键：获取链接对应的服务类型
+                    service: result.data.service || 'wechat' // 获取链接对应的服务类型
                 };
                 
-                // 验证环境与服务类型是否匹配（核心控制逻辑）
+                // 显示服务类型标签
+                const serviceInfo = envConfig[currentContent.service] || envConfig.browser;
+                serviceTag.innerHTML = `${serviceInfo.icon}服务类型: ${serviceInfo.name}`;
+                serviceTag.className = `env-tag ${getEnvTagClass(currentContent.service)}`;
+                serviceTag.classList.remove('hidden');
+                
+                // 验证环境与服务类型是否匹配
                 const isEnvValid = validateEnvAndService(currentEnv, currentContent.service);
                 if (!isEnvValid) {
                     // 环境不匹配，显示受限提示
                     throw new Error('environment_mismatch'); // 特殊错误标识
                 }
                 
-                // 检查链接是否过期（基于之前优化的API）
+                // 检查链接是否过期
                 if (result.data.validity?.is_expired) {
                     throw new Error(`链接已过期（有效期至: ${result.data.expiry_time}）`);
                 }
@@ -309,9 +366,14 @@
                 if (error.message === 'environment_mismatch') {
                     errorIcon.className = 'fa fa-ban text-red-500 text-5xl mb-4';
                     errorMessage.textContent = '该链接不支持当前环境';
+                    
                     // 显示支持的环境提示
+                    const serviceInfo = envConfig[currentContent.service] || envConfig.browser;
+                    supportedEnvEl.textContent = serviceInfo.name;
+                    supportedEnvIcon.innerHTML = `${serviceInfo.icon}${serviceInfo.name}`;
+                    supportedEnvIcon.className = `env-tag ${getEnvTagClass(currentContent.service)}`;
+                    
                     envMismatchHint.classList.remove('hidden');
-                    supportedEnvEl.textContent = getEnvName(currentContent.service);
                     errorContainer.classList.remove('hidden');
                     return;
                 }
@@ -336,16 +398,17 @@
             }
         }
         
-        // 辅助函数：将环境标识转换为中文名称
-        function getEnvName(env) {
-            const envNames = {
-                'wechat': '微信',
-                'qq': 'QQ',
-                'alipay': '支付宝',
-                'douyin': '抖音',
-                'other': '外部浏览器'
+        // 辅助函数：获取环境标签样式
+        function getEnvTagClass(env) {
+            const envClasses = {
+                wechat: 'bg-green-100 text-green-800',
+                qq: 'bg-blue-100 text-blue-800',
+                alipay: 'bg-blue-100 text-blue-800',
+                douyin: 'bg-red-100 text-red-800',
+                google: 'bg-red-100 text-red-800',
+                browser: 'bg-gray-100 text-gray-800'
             };
-            return envNames[env] || '未知环境';
+            return envClasses[env] || 'bg-gray-100 text-gray-800';
         }
         
         // 页面加载完成后初始化
