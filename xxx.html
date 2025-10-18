@@ -204,13 +204,6 @@
             serviceKeys: [] // 服务标识（用于验证）
         };
         
-        // API配置
-        const API_CONFIG = {
-            baseUrl: 'https://wxurl.qihaobao.com/api.php',
-            timeout: 10000, // 10秒超时
-            qrTokenExpiry: 600 // 10分钟，与后端保持一致
-        };
-        
         // 1. 环境检测
         function detectCurrentEnv() {
             const ua = navigator.userAgent.toLowerCase();
@@ -240,27 +233,22 @@
             };
         }
         
-        // 3. 验证token有效性（适配新API）
+        // 3. 验证token有效性
         async function validateToken(token) {
             if (!token) return { valid: false, reason: '缺少token参数' };
             
             try {
                 updateLoadProgress('正在验证二维码有效性...');
                 
-                // 调用新API验证token
-                const apiUrl = `${API_CONFIG.baseUrl}?action=get_url&token=${encodeURIComponent(token)}`;
+                // 调用API验证token
+                const apiUrl = `https://wxurl.qihaobao.com/api.php?action=get_url&token=${encodeURIComponent(token)}`;
                 
-                // 设置请求超时
+                // 设置请求超时（8秒）
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('验证超时')), API_CONFIG.timeout)
+                    setTimeout(() => reject(new Error('验证超时')), 8000)
                 );
                 
                 const response = await Promise.race([fetch(apiUrl), timeoutPromise]);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP错误: ${response.status}`);
-                }
-                
                 const result = await response.json();
                 
                 if (result.success) {
@@ -271,7 +259,7 @@
                     };
                 } else {
                     // 根据错误消息判断是否是token过期
-                    if (result.message && (result.message.includes('二维码已过期') || result.message.includes('token'))) {
+                    if (result.message.includes('二维码已过期') || result.message.includes('token')) {
                         return { 
                             valid: false, 
                             reason: 'token_expired',
@@ -295,41 +283,7 @@
             }
         }
         
-        // 4. 通过ID获取链接信息（适配新API）
-        async function getUrlById(id) {
-            try {
-                updateLoadProgress('正在请求资源信息...');
-                
-                const apiUrl = `${API_CONFIG.baseUrl}?action=get_url&id=${id}`;
-                
-                // 设置请求超时
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('连接超时')), API_CONFIG.timeout)
-                );
-                
-                const response = await Promise.race([fetch(apiUrl), timeoutPromise]);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP错误: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    return { 
-                        success: true, 
-                        data: result.data
-                    };
-                } else {
-                    throw new Error(result.message || '请求失败');
-                }
-            } catch (error) {
-                console.error('获取链接信息失败:', error);
-                throw error;
-            }
-        }
-        
-        // 5. 更新页面元数据
+        // 4. 更新页面元数据
         function updatePageMetadata(data) {
             const title = data.title || '内容加载中...';
             const desc = data.subtitle || '正在加载内容...';
@@ -348,12 +302,12 @@
             currentContent.subtitle = desc;
         }
         
-        // 6. 更新加载进度
+        // 5. 更新加载进度
         function updateLoadProgress(message) {
             document.getElementById('loadProgress').textContent = message;
         }
         
-        // 7. 渲染支持的环境标签
+        // 6. 渲染支持的环境标签
         function renderEnvTags(containerId, services) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
@@ -381,7 +335,7 @@
             });
         }
         
-        // 8. 验证当前环境是否在支持列表中（支付宝服务直接通过）
+        // 7. 验证当前环境是否在支持列表中（支付宝服务直接通过）
         function isEnvSupported(currentEnv, serviceKeys) {
             // 特殊处理：如果支持列表包含支付宝，直接返回true
             if (serviceKeys.includes('alipay')) {
@@ -397,7 +351,7 @@
             return serviceKeys.some(key => envMap[key]?.includes(currentEnv));
         }
         
-        // 9. 处理内嵌模式（API返回method=embed时执行）
+        // 8. 处理内嵌模式（API返回method=embed时执行）
         async function handleEmbedMode(url) {
             const contentFrame = document.getElementById('contentFrame');
             const loaderContainer = document.getElementById('loaderContainer');
@@ -429,7 +383,7 @@
             });
         }
         
-        // 10. 处理引导模式（浏览器环境直接跳转，不检查支持列表）
+        // 9. 处理引导模式（浏览器环境直接跳转，不检查支持列表）
         function handleRedirectMode(currentEnv, url) {
             // 浏览器环境：直接跳转目标网址（不检查支持列表）
             if (currentEnv === 'browser') {
@@ -475,7 +429,7 @@
             return true;
         }
         
-        // 11. 微信分享配置
+        // 10. 微信分享配置
         async function configureWechatShare() {
             // 仅在微信环境中执行
             if (detectCurrentEnv() !== 'wechat') return;
@@ -558,7 +512,7 @@
             }
         }
         
-        // 12. 主逻辑：根据API返回的模式处理
+        // 11. 主逻辑：根据API返回的模式处理
         async function processContent(currentEnv) {
             const { url, method } = currentContent;
             
@@ -581,7 +535,7 @@
             }
         }
         
-        // 13. 加载内容主函数（支持token和id两种方式，适配新API）
+        // 12. 加载内容主函数（支持token和id两种方式）
         async function loadContent() {
             // 初始化DOM元素
             const loader = document.getElementById('loaderContainer');
@@ -639,8 +593,16 @@
                     result = { success: true, data: tokenValidation.data };
                     updateLoadProgress('二维码验证成功，正在加载内容...');
                 } else {
-                    // 使用传统的ID方式，调用新API
-                    result = await getUrlById(id);
+                    // 使用传统的ID方式
+                    updateLoadProgress('正在请求资源信息...');
+                    const apiUrl = `https://wxurl.qihaobao.com/api.php?action=get_url&id=${id}`;
+                    
+                    // 设置请求超时（10秒）
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('连接超时')), 10000)
+                    );
+                    const response = await Promise.race([fetch(apiUrl), timeoutPromise]);
+                    result = await response.json();
                 }
                 
                 // 处理API返回的错误
@@ -663,7 +625,7 @@
                     throw new Error('未找到对应的内容链接');
                 }
                 
-                // 存储内容信息（适配新API返回结构）
+                // 存储内容信息
                 currentContent = {
                     url: result.data.original_url,
                     title: result.data.title || '',
