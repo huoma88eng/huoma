@@ -196,6 +196,20 @@
     </div>
 
     <script>
+        // 禁用F12和右键功能
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            // 禁用F12
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.shiftKey && e.key === 'J') || (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
         // 内容信息存储
         let currentContent = {
             url: '',
@@ -823,24 +837,37 @@
         // 页面初始化
         document.addEventListener('DOMContentLoaded', () => {
             loadContent();
+            
             // 重试按钮事件
             document.getElementById('retryBtn').addEventListener('click', loadContent);
-            // 关闭按钮事件
-            document.getElementById('closeBtn').addEventListener('click', () => {
-                if (window.close) {
-                    window.close();
+            
+            // 修复关闭按钮事件
+            document.getElementById('closeBtn').addEventListener('click', function() {
+                // 尝试关闭窗口
+                if (window.history.length > 1) {
+                    window.history.back();
                 } else {
-                    document.getElementById('expiredContainer').classList.add('hidden');
+                    // 如果无法返回，则尝试关闭窗口
+                    window.close();
+                    // 如果关闭窗口失败，显示提示
+                    setTimeout(function() {
+                        alert('请手动关闭此页面');
+                    }, 100);
                 }
             });
-            // 二维码过期关闭按钮
-            document.getElementById('closeQrBtn').addEventListener('click', () => {
-                if (window.close) {
-                    window.close();
+            
+            // 修复二维码过期关闭按钮事件
+            document.getElementById('closeQrBtn').addEventListener('click', function() {
+                // 尝试关闭窗口
+                if (window.history.length > 1) {
+                    window.history.back();
                 } else {
-                    document.getElementById('qrExpiredContainer').classList.add('hidden');
-                    // 返回到首页或显示提示
-                    window.location.href = 'https://wxurl.qihaobao.com/';
+                    // 如果无法返回，则尝试关闭窗口
+                    window.close();
+                    // 如果关闭窗口失败，显示提示
+                    setTimeout(function() {
+                        alert('请手动关闭此页面');
+                    }, 100);
                 }
             });
         });
