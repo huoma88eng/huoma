@@ -6,7 +6,7 @@
     <link rel="shortcut icon" type="image/x-icon" id="favicon" href="" />
     <meta name="description" id="metaDescription" content="" />
     <title id="pageTitle"></title>
-    <meta property="og:title" id="ogTitle" content="临时通道" />
+    <meta property="og:title" id="ogTitle" content="" />
     <meta property="og:description" id="ogDescription" content="临时通道，限时访问" />
     <meta property="og:image" id="ogImage" content="https://wxurl.qihaobao.com/01.png" />
     <meta property="og:url" content="" />
@@ -357,7 +357,7 @@
         
         // 5. 更新页面元数据
         function updatePageMetadata(data) {
-            const title = data.title || '临时通道';
+            const title = data.title || '';
             const desc = data.subtitle || '临时通道，限时访问';
             const image = data.cover_image || 'https://wxurl.qihaobao.com/01.png';
             
@@ -546,7 +546,7 @@
                     nonceStr,
                     signature,
                     shareInfo: shareInfo || {
-                        title: '临时通道',
+                        title: '',
                         desc: '临时通道，限时访问',
                         link: currentUrl,
                         imgUrl: 'https://wxurl.qihaobao.com/01.png'
@@ -767,7 +767,7 @@
                 // 存储内容信息（适配新API返回结构）
                 currentContent = {
                     url: result.data.original_url,
-                    title: result.data.title || '临时通道',
+                    title: result.data.title || '',
                     subtitle: result.data.subtitle || '临时通道，限时访问',
                     cover_image: result.data.cover_image || 'https://wxurl.qihaobao.com/01.png',
                     method: result.data.method || 'embed',
