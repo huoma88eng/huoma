@@ -198,22 +198,17 @@ document.addEventListener('keydown', function(e) {
   // F12键的keyCode是123
   if (e.keyCode === 123) {
     e.preventDefault(); // 阻止默认行为
-    // 可选：添加提示信息
-    // alert('F12功能已禁用');
   }
   // 额外：阻止Ctrl+Shift+I（另一个打开开发者工具的快捷键）
   else if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
     e.preventDefault();
   }
-  // 其他可能的快捷键（如Ctrl+U查看源代码）也可类似阻止，但意义不大
 });
 </script>
 <script>
 // 禁用右键菜单
 document.addEventListener('contextmenu', function(e) {
   e.preventDefault(); // 阻止默认右键行为
-  // 可选：添加提示信息
-  // alert('右键功能已禁用');
 });
 </script>
     <script>
@@ -359,12 +354,18 @@ document.addEventListener('contextmenu', function(e) {
             });
         }
         
-        // 7. 验证当前环境是否在支持列表中（支付宝服务直接通过）
+        // 7. 验证当前环境是否在支持列表中（浏览器环境直接通过）
         function isEnvSupported(currentEnv, serviceKeys) {
-            // 特殊处理：如果支持列表包含支付宝，直接返回true
+            // 浏览器环境直接通过，不限制服务环境
+            if (currentEnv === 'browser') {
+                return true;
+            }
+            
+            // 支付宝服务直接通过
             if (serviceKeys.includes('alipay')) {
                 return true;
             }
+            
             // 其他环境仍需正常验证
             const envMap = {
                 'wechat': ['wechat'],
@@ -559,6 +560,44 @@ document.addEventListener('contextmenu', function(e) {
             }
         }
         
+        // 辅助函数：环境标识转中文名称
+        function getEnvName(env) {
+            const names = {
+                'wechat': '微信', 
+                'qq': 'QQ', 
+                'alipay': '支付宝',
+                'douyin': '抖音', 
+                'browser': '浏览器', 
+                'other': '其他环境'
+            };
+            return names[env] || '未知环境';
+        }
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadContent();
+            // 重试按钮事件
+            document.getElementById('retryBtn').addEventListener('click', loadContent);
+            // 关闭按钮事件
+            document.getElementById('closeBtn').addEventListener('click', () => {
+                if (window.close) {
+                    window.close();
+                } else {
+                    document.getElementById('expiredContainer').classList.add('hidden');
+                }
+            });
+            // 二维码过期关闭按钮
+            document.getElementById('closeQrBtn').addEventListener('click', () => {
+                if (window.close) {
+                    window.close();
+                } else {
+                    document.getElementById('qrExpiredContainer').classList.add('hidden');
+                // 返回到首页或显示提示
+                    window.location.href = 'https://39fh.cn/';
+                }
+            });
+        });
+        
         // 12. 加载内容主函数（支持token和id两种方式）
         async function loadContent() {
             // 初始化DOM元素
@@ -691,44 +730,6 @@ document.addEventListener('contextmenu', function(e) {
                 errorContainer.classList.remove('hidden');
             }
         }
-        
-        // 辅助函数：环境标识转中文名称
-        function getEnvName(env) {
-            const names = {
-                'wechat': '微信', 
-                'qq': 'QQ', 
-                'alipay': '支付宝',
-                'douyin': '抖音', 
-                'browser': '浏览器', 
-                'other': '其他环境'
-            };
-            return names[env] || '未知环境';
-        }
-        
-        // 页面初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            loadContent();
-            // 重试按钮事件
-            document.getElementById('retryBtn').addEventListener('click', loadContent);
-            // 关闭按钮事件
-            document.getElementById('closeBtn').addEventListener('click', () => {
-                if (window.close) {
-                    window.close();
-                } else {
-                    document.getElementById('expiredContainer').classList.add('hidden');
-                }
-            });
-            // 二维码过期关闭按钮
-            document.getElementById('closeQrBtn').addEventListener('click', () => {
-                if (window.close) {
-                    window.close();
-                } else {
-                    document.getElementById('qrExpiredContainer').classList.add('hidden');
-                // 返回到首页或显示提示
-                    window.location.href = 'https://39fh.cn/';
-                }
-            });
-        });
     </script>
 </body>
 </html>
