@@ -6,6 +6,7 @@
     <title>跳转中...</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <style>
+        /* 保持原有样式不变 */
         body {
             margin: 0;
             padding: 0;
@@ -68,6 +69,7 @@
 
         const code = getUrlParam('code');
         let countdown = 5; // 跳转倒计时（秒）
+        let jumpTimer = null; // 跳转定时器
 
         if (!code) {
             // 无防红码时显示错误
@@ -77,7 +79,7 @@
         } else {
             // 调用API获取最新跳转地址
             $.ajax({
-                url: 'https://cai.qihaobao.com/Mao_admin/api.php', // 后端API地址（根据实际路径调整）
+                url: 'https://cai.qihaobao.com/Mao_admin/api.php', // 后端API地址
                 type: 'GET',
                 dataType: 'json',
                 data: {
@@ -87,40 +89,51 @@
                     _t: new Date().getTime() // 防止缓存
                 },
                 success: function(res) {
-                    // 实际跳转逻辑由后端header实现，此处处理异常情况
-                    if (res && res.code !== 0) {
-                        throw new Error(res.msg || '获取地址失败');
+                    if (res.code === 0 && res.data && res.data.url) {
+                        // 成功获取地址，倒计时后跳转
+                        const countdownEl = document.getElementById('countdown');
+                        const messageEl = document.getElementById('message');
+                        messageEl.textContent = '即将跳转到目标地址...';
+                        
+                        jumpTimer = setInterval(() => {
+                            if (countdown > 0) {
+                                countdownEl.textContent = `倒计时 ${countdown} 秒后自动跳转...`;
+                                countdown--;
+                            } else {
+                                clearInterval(jumpTimer);
+                                window.location.href = res.data.url; // 前端执行跳转
+                            }
+                        }, 1000);
+                    } else {
+                        // 接口返回错误信息
+                        document.getElementById('message').textContent = res.msg || '获取地址失败';
+                        document.getElementById('message').classList.add('error');
+                        document.querySelector('.spinner').style.display = 'none';
                     }
                 },
                 error: function(xhr, status, error) {
-                    // 捕获后端跳转失败（如404、500或禁用状态）
-                    let errorMsg = '跳转失败，请稍后重试';
-                    if (xhr.responseText.includes('已禁用')) {
-                        errorMsg = '该链接已被禁用';
-                    } else if (xhr.responseText.includes('不存在')) {
-                        errorMsg = '防红码不存在';
+                    // 网络错误或接口异常
+                    let errorMsg = '网络错误，无法连接服务器';
+                    try {
+                        // 尝试解析后端返回的错误信息
+                        const res = JSON.parse(xhr.responseText);
+                        errorMsg = res.msg || errorMsg;
+                    } catch (e) {
+                        // 解析失败时显示通用错误
                     }
-                    
                     document.getElementById('message').textContent = errorMsg;
                     document.getElementById('message').classList.add('error');
                     document.querySelector('.spinner').style.display = 'none';
                 }
             });
-
-            // 显示倒计时（如果后端跳转延迟）
-            const countdownEl = document.getElementById('countdown');
-            const updateCountdown = () => {
-                if (countdown > 0) {
-                    countdownEl.textContent = `若未自动跳转，${countdown}秒后将刷新页面...`;
-                    countdown--;
-                    setTimeout(updateCountdown, 1000);
-                } else {
-                    countdownEl.textContent = '正在刷新页面...';
-                    window.location.reload(); // 倒计时结束仍未跳转则刷新
-                }
-            };
-            updateCountdown();
         }
+
+        // 防止跳转前关闭页面的提示
+        window.onbeforeunload = function() {
+            if (jumpTimer) {
+                return '正在准备跳转，确定要离开吗？';
+            }
+        };
     </script>
 </body>
 </html>
